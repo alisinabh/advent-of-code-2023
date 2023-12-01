@@ -18,38 +18,17 @@ fn main() {
 }
 
 fn extract_value(line: &str) -> Result<i32, std::num::ParseIntError> {
-    let mut cursor: usize = 0;
     let line = replace_literal_digits(line);
-    let chars_count = line.chars().count();
+    let mut chars = line.chars();
 
-    while cursor < chars_count {
-        match line.chars().nth(cursor) {
-            Some(c) if c.is_digit(10) => break,
-            _ => (),
-        }
-        cursor = cursor + 1;
-    }
+    let first_digit = chars.find(|c| c.is_digit(10)).unwrap();
+    let last_digit = if let Some(c) = chars.rev().find(|c| c.is_digit(10)) {
+        c
+    } else {
+        first_digit
+    };
 
-    let mut rcursor: usize = chars_count - 1;
-
-    loop {
-        match line.chars().nth(rcursor) {
-            Some(c) if c.is_digit(10) => break,
-            _ => (),
-        }
-
-        if rcursor == 0 {
-            break;
-        } else {
-            rcursor = rcursor - 1;
-        }
-    }
-
-    let number_str = format!(
-        "{}{}",
-        line.chars().nth(cursor).unwrap(),
-        line.chars().nth(rcursor).unwrap()
-    );
+    let number_str = format!("{}{}", first_digit, last_digit);
 
     number_str.parse()
 }
@@ -57,7 +36,7 @@ fn extract_value(line: &str) -> Result<i32, std::num::ParseIntError> {
 fn replace_literal_digits(line: &str) -> String {
     let mut normal_line = String::new();
     let mut i = 0;
-    let chars_count = line.chars().count();
+    let chars_count = line.len();
 
     while i < chars_count {
         let char_and_len: (char, usize) = if line[i..].starts_with("one") {
