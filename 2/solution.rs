@@ -1,6 +1,7 @@
 // Advent of code: Day 2
 // Author: @alisinabh
 
+use std::collections::HashMap;
 use std::env;
 use std::fs::read_to_string;
 
@@ -17,6 +18,36 @@ fn main() {
     }
 
     println!("The sum is {}", sum);
+
+    sum = 0;
+
+    for line in file.lines() {
+        sum = sum + calculate_game_power(line);
+    }
+
+    println!("The power sum is {}", sum);
+}
+
+fn calculate_game_power(line: &str) -> i32 {
+    let column_indx = line.find(':').unwrap();
+
+    let mut draws = (&line[column_indx + 1..]).split(';').map(|d| d.split(','));
+
+    let mut maximums: HashMap<&str, i32> = HashMap::with_capacity(3);
+
+    while let Some(mut details) = draws.next() {
+        while let Some(item) = details.next() {
+            let [x, color] = item.trim().split(' ').collect::<Vec<_>>()[..] else {panic!("Invalid data")};
+            let x: i32 = x.parse::<i32>().unwrap();
+
+            match maximums.get(color) {
+                Some(&max) if max > x => None,
+                _ => maximums.insert(color, x),
+            };
+        }
+    }
+
+    maximums.values().fold(1, |acc, x| acc * x)
 }
 
 fn game_id_if_possible(line: &str) -> Option<i32> {
