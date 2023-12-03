@@ -8,6 +8,7 @@ use std::fs::read_to_string;
 struct Engine {
     part_numbers: Vec<PartNumber>,
     symbols_matrix: Vec<(usize, usize)>,
+    gears: Vec<(usize, usize)>,
 }
 
 #[derive(Debug)]
@@ -20,19 +21,21 @@ fn main() {
     let args: Vec<_> = env::args().collect();
     let file = read_to_string(&args[1]).unwrap();
 
-    let mut engine = Engine::from_file(file);
+    let engine = Engine::from_file(file);
 
-    // let mut sum: i32 = sum_part_numbers(lines);
-
-    println!("Engine {:#?}", engine);
+    // println!("Engine {:?}", engine);
 
     println!("The sum is {}", engine.sum_part_numbers());
+
+    println!("The gear ratio sum is {}", engine.sum_gear_ratios());
 }
 
 impl Engine {
     fn from_file(file: String) -> Engine {
         let mut part_numbers: Vec<PartNumber> = Vec::new();
         let mut symbols_matrix: Vec<(usize, usize)> = Vec::new();
+        let mut gears: Vec<(usize, usize)> = Vec::new();
+
         let mut chars = file.chars();
 
         let mut i = 0;
@@ -63,7 +66,12 @@ impl Engine {
                         continue;
                     }
                     Some('\r') => continue,
-                    Some(_) => symbols_matrix.push((i, j)),
+                    Some(sym) => {
+                        if sym == '*' {
+                            gears.push((i, j));
+                        }
+                        symbols_matrix.push((i, j))
+                    }
                     None => break,
                 }
             }
@@ -73,10 +81,11 @@ impl Engine {
         Engine {
             part_numbers: part_numbers,
             symbols_matrix: symbols_matrix,
+            gears: gears,
         }
     }
 
-    fn sum_part_numbers(&mut self) -> i64 {
+    fn sum_part_numbers(&self) -> i64 {
         let mut sum = 0;
 
         for p in &self.part_numbers {
@@ -87,12 +96,30 @@ impl Engine {
                 .find(|&(i, j)| *j <= oj + 1 && *j + 1 >= oj && *i + 1 >= oi && oi + count >= *i)
             {
                 Some(_) => sum = sum + p.value,
-                None => {
-                    println!("{:?}", p);
-                }
+                None => {}
             }
         }
 
         sum
+    }
+
+    fn sum_gear_ratios(&self) -> i64 {
+        self.gears.iter().fold(0, |acc, (gi, gj)| {
+            let gear_values: Vec<_> = self
+                .part_numbers
+                .iter()
+                .filter(|p| {
+                    let (i, j, count) = p.position;
+                    j <= *gj + 1 && j + 1 >= *gj && *gi + 1 >= i && *gi <= i + count
+                })
+                .collect();
+
+            // println!("gears {:?}", gear_values);
+
+            match gear_values[..] {
+                [x, y] => x.value * y.value + acc,
+                _ => acc,
+            }
+        })
     }
 }
