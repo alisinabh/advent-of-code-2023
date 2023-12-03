@@ -93,7 +93,7 @@ impl Engine {
             match self
                 .symbols_matrix
                 .iter()
-                .find(|&(i, j)| *j <= oj + 1 && *j + 1 >= oj && *i + 1 >= oi && oi + count >= *i)
+                .find(|&&(i, j)| j <= oj + 1 && j + 1 >= oj && i + 1 >= oi && oi + count >= i)
             {
                 Some(_) => sum = sum + p.value,
                 None => {}
@@ -104,13 +104,13 @@ impl Engine {
     }
 
     fn sum_gear_ratios(&self) -> i64 {
-        self.gears.iter().fold(0, |acc, (gi, gj)| {
+        self.gears.iter().fold(0, |acc, &(gi, gj)| {
             let gear_values: Vec<_> = self
                 .part_numbers
                 .iter()
                 .filter(|p| {
                     let (i, j, count) = p.position;
-                    j <= *gj + 1 && j + 1 >= *gj && *gi + 1 >= i && *gi <= i + count
+                    j <= gj + 1 && j + 1 >= gj && gi + 1 >= i && gi <= i + count
                 })
                 .collect();
 
