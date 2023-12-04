@@ -41,6 +41,18 @@ impl ScratchCard {
         }
     }
 
+    fn prize_card_count(&self, cards: &[Self]) -> usize {
+        let match_count = self.match_count();
+
+        let mut prize_count = 1;
+
+        for i in 0..match_count {
+            prize_count += cards[i].prize_card_count(&cards[i + 1..])
+        }
+
+        prize_count
+    }
+
     fn match_count(&self) -> usize {
         let mut matches = 0;
         let mut winner_cursor = 0;
@@ -49,12 +61,12 @@ impl ScratchCard {
             while winner_cursor < self.winning_numbers.len() {
                 let winner_number = self.winning_numbers[winner_cursor];
                 if n == winner_number {
-                    matches = matches + 1;
+                    matches += 1;
                     break;
                 } else if n < winner_number {
                     break;
                 } else {
-                    winner_cursor = winner_cursor + 1;
+                    winner_cursor += 1;
                 }
             }
         }
@@ -72,13 +84,26 @@ fn main() -> Result<(), Box<dyn Error>> {
     let file = read_to_string(&args[1])?;
 
     let mut power = 0;
+    let mut cards: Vec<ScratchCard> = Vec::new();
 
     for line in file.lines() {
         let card = ScratchCard::parse(line)?;
         power = power + card.calculate_power().ok_or("overflow")?;
+        cards.push(card);
     }
 
     println!("pile power {}", power);
+
+    let mut i = 0;
+    let mut prize_count = 0;
+
+    while i < cards.len() {
+        prize_count += cards[i].prize_card_count(&cards[i + 1..]);
+
+        i += 1;
+    }
+
+    println!("pile prize count: {}", prize_count);
 
     Ok(())
 }
