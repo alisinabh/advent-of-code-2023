@@ -42,15 +42,7 @@ impl ScratchCard {
     }
 
     fn prize_card_count(&self, cards: &[Self]) -> usize {
-        let match_count = self.match_count();
-
-        let mut prize_count = 1;
-
-        for i in 0..match_count {
-            prize_count += cards[i].prize_card_count(&cards[i + 1..])
-        }
-
-        prize_count
+        (0..self.match_count()).fold(1, |acc, i| acc + cards[i].prize_card_count(&cards[i + 1..]))
     }
 
     fn match_count(&self) -> usize {
@@ -94,14 +86,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!("pile power {}", power);
 
-    let mut i = 0;
-    let mut prize_count = 0;
-
-    while i < cards.len() {
-        prize_count += cards[i].prize_card_count(&cards[i + 1..]);
-
-        i += 1;
-    }
+    let prize_count =
+        (0..cards.len()).fold(0, |acc, i| acc + cards[i].prize_card_count(&cards[i + 1..]));
 
     println!("pile prize count: {}", prize_count);
 
