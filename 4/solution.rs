@@ -11,6 +11,7 @@ struct ScratchCard {
     card_number: usize,
     winning_numbers: Vec<i32>,
     numbers: Vec<i32>,
+    match_count: Option<usize>,
 }
 
 impl ScratchCard {
@@ -27,25 +28,32 @@ impl ScratchCard {
         winning_numbers.sort();
         numbers.sort();
 
-        Ok(ScratchCard {
+        let mut card = ScratchCard {
             card_number: number.parse()?,
             winning_numbers: winning_numbers,
             numbers: numbers,
-        })
+            match_count: None,
+        };
+
+        card.calculate_match_count();
+
+        Ok(card)
     }
 
     fn calculate_power(&self) -> Option<i32> {
-        match self.match_count() {
-            0 => Some(0),
-            c => 2_i32.checked_pow(c as u32 - 1),
+        match self.match_count {
+            Some(0) => Some(0),
+            Some(c) => 2_i32.checked_pow(c as u32 - 1),
+            None => None,
         }
     }
 
     fn prize_card_count(&self, cards: &[Self]) -> usize {
-        (0..self.match_count()).fold(1, |acc, i| acc + cards[i].prize_card_count(&cards[i + 1..]))
+        (0..self.match_count.unwrap())
+            .fold(1, |acc, i| acc + cards[i].prize_card_count(&cards[i + 1..]))
     }
 
-    fn match_count(&self) -> usize {
+    fn calculate_match_count(&mut self) {
         let mut matches = 0;
         let mut winner_cursor = 0;
 
@@ -63,7 +71,7 @@ impl ScratchCard {
             }
         }
 
-        matches
+        self.match_count = Some(matches)
     }
 
     fn parse_numbers(numbers: &str) -> Result<Vec<i32>, ParseIntError> {
