@@ -83,6 +83,29 @@ impl SeedData {
         value
     }
 
+    fn next_edge_diff(&self, start_seed: u64, end_seed: u64) -> u64 {
+        let c_ranges: Vec<_> = PATH
+            .windows(2)
+            .map(|path| &self.ranges[&(path[0].into(), path[1].into())])
+            .collect();
+
+        let mut min_change: u64 = end_seed - start_seed;
+        let mut value = start_seed;
+
+        for c in c_ranges {
+            let range = c
+                .get_related_range(value)
+                .or_else(|| c.get_next_range(value));
+
+            if let Some(&(ref range, diff)) = range {
+                min_change = std::cmp::min(range.end - value, min_change);
+                value = (value as i64 + diff) as u64;
+            }
+        }
+
+        start_seed + min_change
+    }
+
     fn find_lowest_location(&self) -> Option<u64> {
         self.seeds.iter().map(|&s| self.traverse(s)).min()
     }
@@ -93,12 +116,21 @@ impl SeedData {
         let mut i = 0;
 
         while i < self.seeds.len() {
-            for seed in self.seeds[i]..self.seeds[i] + self.seeds[i + 1] {
+            let mut seed = self.seeds[i];
+            let max_seed = seed + self.seeds[i + 1];
+
+            loop {
                 match self.traverse(seed) {
                     s if s < location => location = s,
-                    _ => (),
+                    _ => {
+                        seed = self.next_edge_diff(seed, max_seed);
+                        if seed >= max_seed {
+                            break;
+                        }
+                    }
                 }
             }
+
             i += 2;
         }
 
@@ -125,12 +157,21 @@ impl ConversionRange {
         Ok(())
     }
 
-    fn get_next_value(&self, value: u64) -> u64 {
-        match self
-            .ranges
+    fn get_related_range(&self, value: u64) -> Option<&(Range<u64>, i64)> {
+        self.ranges
             .iter()
             .find(|&(range, _)| range.contains(&value))
-        {
+    }
+
+    fn get_next_range(&self, start: u64) -> Option<&(Range<u64>, i64)> {
+        self.ranges
+            .iter()
+            .filter(|&(range, _)| range.start > start)
+            .min_by(|&(range_1, _), &(range_2, _)| range_1.start.cmp(&range_2.start))
+    }
+
+    fn get_next_value(&self, value: u64) -> u64 {
+        match self.get_related_range(value) {
             Some(&(_, diff)) => (value as i64 + diff as i64) as u64,
             None => value,
         }
@@ -142,8 +183,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     let file = read_to_string(&args[1])?;
 
     let seed_data = SeedData::parse(file)?;
-
-    println!("{:?}", seed_data);
 
     println!(
         "part one: {}",
