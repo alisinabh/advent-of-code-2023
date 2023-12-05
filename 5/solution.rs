@@ -15,7 +15,7 @@ struct SeedData {
 
 #[derive(Debug)]
 struct ConversionRange {
-    ranges: Vec<(Range<u64>, i64)>,
+    ranges: Vec<MapRange>,
 }
 
 const PATH: [&str; 8] = [
@@ -83,7 +83,7 @@ impl SeedData {
         value
     }
 
-    fn next_edge_diff(&self, start_seed: u64, end_seed: u64) -> u64 {
+    fn next_edge(&self, start_seed: u64, end_seed: u64) -> u64 {
         let c_ranges: Vec<_> = PATH
             .windows(2)
             .map(|path| &self.ranges[&(path[0].into(), path[1].into())])
@@ -123,7 +123,7 @@ impl SeedData {
                 match self.traverse(seed) {
                     s if s < location => location = s,
                     _ => {
-                        seed = self.next_edge_diff(seed, max_seed);
+                        seed = self.next_edge(seed, max_seed);
                         if seed >= max_seed {
                             break;
                         }
@@ -137,6 +137,8 @@ impl SeedData {
         location
     }
 }
+
+type MapRange = (Range<u64>, i64);
 
 impl ConversionRange {
     fn new() -> ConversionRange {
@@ -157,13 +159,13 @@ impl ConversionRange {
         Ok(())
     }
 
-    fn get_related_range(&self, value: u64) -> Option<&(Range<u64>, i64)> {
+    fn get_related_range(&self, value: u64) -> Option<&MapRange> {
         self.ranges
             .iter()
             .find(|&(range, _)| range.contains(&value))
     }
 
-    fn get_next_range(&self, start: u64) -> Option<&(Range<u64>, i64)> {
+    fn get_next_range(&self, start: u64) -> Option<&MapRange> {
         self.ranges
             .iter()
             .filter(|&(range, _)| range.start > start)
