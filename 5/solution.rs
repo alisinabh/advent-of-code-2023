@@ -86,6 +86,24 @@ impl SeedData {
     fn find_lowest_location(&self) -> Option<u64> {
         self.seeds.iter().map(|&s| self.traverse(s)).min()
     }
+
+    fn find_lowest_location_using_ranges(&self) -> u64 {
+        let mut location = u64::MAX;
+
+        let mut i = 0;
+
+        while i < self.seeds.len() {
+            for seed in self.seeds[i]..self.seeds[i] + self.seeds[i + 1] {
+                match self.traverse(seed) {
+                    s if s < location => location = s,
+                    _ => (),
+                }
+            }
+            i += 2;
+        }
+
+        location
+    }
 }
 
 impl ConversionRange {
@@ -128,10 +146,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("{:?}", seed_data);
 
     println!(
-        "{}",
+        "part one: {}",
         seed_data
             .find_lowest_location()
             .ok_or("location not found")?
+    );
+
+    println!(
+        "part two: {}",
+        seed_data.find_lowest_location_using_ranges()
     );
 
     Ok(())
