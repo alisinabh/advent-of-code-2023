@@ -21,6 +21,7 @@ enum HandType {
 struct Hand {
     cards: Vec<Card>,
     r#type: HandType,
+    type_with_joker: HandType,
     bid: u64,
 }
 
@@ -35,11 +36,13 @@ impl Hand {
             .collect::<Result<_, _>>()?;
 
         let hand_type = Self::calculate_type(&cards);
+        let hand_type_with_joker = Self::maybe_calculate_type_with_joker(&cards);
 
         Ok(Hand {
             cards: cards,
             bid: bid,
             r#type: hand_type,
+            type_with_joker: hand_type_with_joker,
         })
     }
 
@@ -47,7 +50,7 @@ impl Hand {
         let mut map: HashMap<u8, u8> = HashMap::new();
 
         for c in cards {
-            map.entry(c.power)
+            map.entry(c.power())
                 .and_modify(|count| *count += 1)
                 .or_insert(1);
         }
@@ -73,16 +76,74 @@ impl Hand {
         }
     }
 
+    fn maybe_calculate_type_with_joker(cards: &Vec<Card>) -> HandType {
+        let joker_count = cards.iter().filter(|c| c.is_joker()).count() as u8;
+
+        if joker_count > 0 {
+            Self::calculate_type_with_joker(cards, joker_count)
+        } else {
+            Self::calculate_type(cards)
+        }
+    }
+
+    fn calculate_type_with_joker(cards: &Vec<Card>, joker_count: u8) -> HandType {
+        if joker_count == 5 {
+            return HandType::FiveOfAKind;
+        }
+
+        let mut map: HashMap<u8, u8> = HashMap::new();
+
+        let cards = cards.iter().filter(|&x| x != &Card::Joker);
+
+        for c in cards {
+            map.entry(c.power_with_joker())
+                .and_modify(|count| *count += 1)
+                .or_insert(1);
+        }
+
+        let most_repeat = map.values().max().unwrap();
+
+        match most_repeat + joker_count {
+            5 => HandType::FiveOfAKind,
+            4 => HandType::FourOfAKind,
+            3 => {
+                if map.keys().len() == 2 {
+                    HandType::FullHouse
+                } else {
+                    HandType::ThreeOfAKind
+                }
+            }
+            _ => {
+                if map.values().filter(|&&x| x == 2).count() == 1 {
+                    HandType::TwoPair
+                } else {
+                    HandType::OnePair
+                }
+            }
+        }
+    }
+
     fn magic_number(&self) -> u64 {
         self.cards.iter().enumerate().fold(
             (self.r#type as u64) * 10_u64.pow(10),
-            |acc, (indx, value)| acc + 10_u64.pow((8 - indx * 2) as u32) * value.power as u64,
+            |acc, (indx, value)| acc + 10_u64.pow((8 - indx * 2) as u32) * value.power() as u64,
+        )
+    }
+
+    fn magic_number_with_joker(&self) -> u64 {
+        self.cards.iter().enumerate().fold(
+            (self.type_with_joker as u64) * 10_u64.pow(10),
+            |acc, (indx, value)| {
+                acc + 10_u64.pow((8 - indx * 2) as u32) * value.power_with_joker() as u64
+            },
         )
     }
 }
 
-struct Card {
-    power: u8,
+#[derive(PartialEq)]
+enum Card {
+    Normal { power: u8 },
+    Joker,
 }
 
 const CARD_ORDER: [char; 13] = [
@@ -91,20 +152,40 @@ const CARD_ORDER: [char; 13] = [
 
 impl Card {
     fn from_char(c: &char) -> Option<Self> {
-        if let Some(indx) = CARD_ORDER.iter().position(|&r| r == *c) {
-            Some(Card {
+        if *c == 'J' {
+            Some(Card::Joker)
+        } else if let Some(indx) = CARD_ORDER.iter().position(|&r| r == *c) {
+            Some(Card::Normal {
                 power: (indx + 1) as u8,
             })
         } else {
             None
         }
     }
+
+    fn power(&self) -> u8 {
+        match self {
+            Self::Joker => 10,
+            Self::Normal { power: p } => *p,
+        }
+    }
+
+    fn power_with_joker(&self) -> u8 {
+        match self {
+            Self::Joker => 0,
+            Self::Normal { power: p } => *p,
+        }
+    }
+
+    fn is_joker(&self) -> bool {
+        Self::Joker == *self
+    }
 }
 
 impl fmt::Debug for Card {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Card")
-            .field("power", &CARD_ORDER[(self.power - 1) as usize])
+            .field("power", &CARD_ORDER[(self.power() - 1) as usize])
             .finish()
     }
 }
@@ -124,12 +205,27 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut rank = 1;
     let mut sum = 0;
 
-    for h in hands {
+    for h in &hands {
         sum += rank * h.bid;
         rank += 1;
     }
 
     println!("part one: {}", sum);
+
+    hands.sort_by(|a, b| {
+        a.magic_number_with_joker()
+            .cmp(&b.magic_number_with_joker())
+    });
+
+    let mut rank = 1;
+    let mut sum = 0;
+
+    for h in hands {
+        sum += rank * h.bid;
+        rank += 1;
+    }
+
+    println!("part two: {}", sum);
 
     Ok(())
 }
